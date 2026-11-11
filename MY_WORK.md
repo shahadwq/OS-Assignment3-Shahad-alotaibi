@@ -32,11 +32,11 @@
 
 | Field | Your Answer |
 |-------|-------------|
-| **Full Name** | [Write your full name here] |
-| **Student ID** | [Write your student ID here] |
-| **University Email** | [yourid]@std.psau.edu.sa |
-| **GitHub Username** | [your-github-username] |
-| **Repository Link** | [Paste your repository link here] |
+| **Full Name** | shahad majed alotaibi |
+| **Student ID** | 446051487 |
+| **University Email** | 446051487@std.psau.edu.sa |
+| **GitHub Username** | shahadwq |
+| **Repository Link** | https://github.com/shahadwq/OS-Assignment3-Shahad-alotaibi.git |
  
 ---
 
@@ -132,97 +132,105 @@
 
 ## Your Development Log
 
-### Entry 1 - [Date and Time]
-**What I did**:
+### Entry 1 - [November 9, 2026, 3:30 PM]
+**What I did**: Set up the project, updated student ID and looked at starter code issues.
 
 **Details**:
+- Forked starter repo to `OS-Assignment3-Shahad-alotaibi` and cloned/opened it in VS Code.
+- Changed student ID to `446051487` on line 357 (or line 304 in starter) so that the random generator is seeded.
+- Ran the unpatched code: watchdog hit at 28s because of race conditions and lost updates.
+- Context switches and total service time were mismatched and busyWaitPolls > 500.
+- Saved terminal execution output to starter_output.txt for technical answers.
+- Committed with message `set student id to 446051487`.
 
-**Challenges**:
+**Challenges**: The starter output failed with watchdog timeout and multiple CPUs were trying to access the queue at the same time.
 
-**Solution**:
+**Solution**: Checked the starter instructions and saw that RaceWindow.pause() exposes the unprotected critical section in queue and statistics.
 
-**Time spent**:
+**Time spent**: 45 minutes
 
 ---
 
-### Entry 2 - [Date and Time]
-**What I did**:
+### Entry 2 - [November 9, 2026, 6:15 PM]
+**What I did**: Implemented Feature 1 (Ready Queue Lock).
 
 **Details**:
+- In ReadyQueue we declared a `private final ReentrantLock lock = new ReentrantLock();` inside it.
+- Wrapped all accesses to `list` and `map` with lock.lock() and try ... finally { lock.unlock(); }.
+- Protected methods: add(), poll(), processOf() and snapshot().
+- Committed with message: `Feature 1: Protect ready queue with ReentrantLock`.
 
-**Challenges**:
+**Challenges**: In poll() there were multiple return points (null when empty and head); I had to make sure that lock is never left open.
 
-**Solution**:
+**Solution**: Structured the code so lock.lock() is followed immediately by a try/finally block that guarantees lock.unlock() runs (no matter where it returns).
 
-**Time spent**:
+**Time spent**: 60 minutes
 
 ---
 
-### Entry 3 - [Date and Time]
-**What I did**:
+### Entry 3 - [November 10, 2026, 5:00 PM]
+**What I did**: Implemented Feature 2 (Statistics Locks).
 
 **Details**:
+- Single coarse-grained ReentrantLock statsLock = new ReentrantLock(); inside SharedStats was declared.
+- Protected counter updates in incrementContextSwitch(), incrementCompletedProcess() and addServiceTime().
+- Protected reads in getCompletedProcessCount(), getContextSwitchCount() and getTotalServiceTime().
+- We tested the code: context switches and completed processes became consistent, but busy waiting remained.
+- Committed with message: `Added lock for SharedStats counters`.
 
-**Challenges**:
+**Challenges**: Fine-grained lock (one per variable) vs coarse-grained lock (one for all).
 
-**Solution**:
+**Solution**: Choose coarse-grained lock because critical sections are short (no deadlock risk) and snapshot reads are consistent (no missing snapshots).
 
-**Time spent**:
+**Time spent**: 50 minutes
 
 ---
 
-### Entry 4 - [Date and Time]
-**What I did**:
+### Entry 4 - [November 11, 2026, 4:20 PM]
+**What I did**: Implemented Feature 3 (Counting Semaphore and Clean Shutdown).
 
 **Details**:
+- Imported `java.util.concurrent.Semaphore`.
+- public final Semaphore semaphore = new Semaphore(0); is declared inside ReadyQueue.
+- Added semaphore.release(); inside ReadyQueue.add().
+- We replaced the busy-waiting polling loop in CpuWorker.run() with readyQueue.semaphore.acquire().
+- Added shutdown logic: when last process completes call readyQueue.semaphore.release(SharedStats.totalCPUs); .
+- Committed with message: `feature 3 done - add semaphore to ready queue and handle shutdown`.
 
-**Challenges**:
+**Challenges**: On the first run the simulation finished processing all tasks but the program never terminated because idle CPUs were blocked on acquire().
 
-**Solution**:
+**Solution**: Check SharedStats.getCompletedProcessCount() >= SharedStats.totalProcesses and released permits = totalCPUs so that all blocked threads wake up and exit.
 
-**Time spent**:
+**Time spent**: 70 minutes
 
 ---
 
-### Entry 5 - [Date and Time]
-**What I did**:
+### Entry 5 - [November 11, 2026, 8:45 PM]
+**What I did**: Verification testing, repeatability checks and documentation.
 
 **Details**:
+- Ran the simulation 5 times consecutively in VS Code to make sure no deadlocks occur.
+- Verified that all lines in VERIFICATION block passed (green checkmarks (`✓`)).
+- The `Busy-waiting polls` confirmed is strictly `0` (observed 0 expected 0).
+- Filled in repository details, dates and development log in MY_WORK.md.
 
-**Challenges**:
+**Challenges**: Making sure busyWaitPolls were always strictly 0 on every single run.
 
-**Solution**:
+**Solution**: Check that readyQueue.poll() is only called when semaphore permit has been acquired (no redundant empty polls).
 
-**Time spent**:
-
----
-
-### Entry 6 - [Optional - Date and Time]
-**What I did**:
-
-**Details**:
-
-**Challenges**:
-
-**Solution**:
-
-**Time spent**:
+**Time spent**: 40 minutes
 
 ---
 
 ## Development Log Summary
 
-> 💡 **TIP:** Fill this in **last**, after all entries are written.
+**Total time spent on assignment**: 4.5 hours
 
-**Total time spent on assignment**: [X hours]
+**Most challenging part**: Handling the clean shutdown mechanism in Feature 3 so that CPUs waiting on semaphore.acquire() don’t hang indefinitely after the last process completes.
 
-**Most challenging part**:
+**Most interesting learning**: Seeing how race conditions that cause random lost updates disappear completely when critical sections are guarded by ReentrantLock and try/finally.
 
-**Most interesting learning**:
-
-**What I would do differently next time**:
-
----
+**What I would do differently next time**: Start using the counting semaphore earlier in concurrency designs to avoid the CPU cycle waste of busy waiting from the beginning.
 
 # Part B: Reflection (0.5 mark)
 
@@ -240,15 +248,14 @@
 
 **Your Answer:** *(5-7 sentences)*
 
-[Write your answer here.]
-
+Writing this simulation showed me how non-deterministic concurrent programs can be when multiple threads share data without synchronization. When the starter code failed with watchdog timeouts I learned how dangerous race conditions (read-modify-write) really are . in SharedStats two CPU threads were reading the same context switch value at the same time so updates were lost and output was inconsistent. Wrapping critical sections in ReentrantLock and always unlocking inside a finally block ensures mutual exclusion. In addition, using a counting Semaphore taught me how to manage shared resources efficiently instead of wasting CPU cycles waiting busy-waiting loops. The biggest surprise was seeing how small delays like RaceWindow.pause() could break the program’s output consistency completely.
 ## Question 2: What was the most challenging part of this assignment?
 
 > 💡 **TIP:** Pick **one** specific challenge (understanding why the starter failed, choosing the lock granularity, the initial value of the semaphore, the shutdown of the CPUs, Git, the video) and say *why* it was hard.
 
 **Your Answer:** *(5-7 sentences)*
 
-[Write your answer here.]
+The hardest part of this project was the clean shutdown for CPU worker threads in Feature 3. Adding readyQueue.semaphore.acquire() stopped busy waiting but handling the termination condition was surprisingly hard. Once last process finished executing idle CPU workers were still inside acquire() waiting for jobs that would never arrive. Since simulation could not exit cleanly watchdog timer was triggered at 28 seconds (hard because I had to figure out which thread should wake up other sleeping CPUs without deadlock). I also had to make sure shutdown worked consistently across runs by tracing completion condition carefully.
 
 ## Question 3: How did you overcome the challenges you faced?
 
@@ -256,28 +263,24 @@
 
 **Your Answer:** *(5-7 sentences)*
 
-[Write your answer here.]
-
+To fix the CPU shutdown I started by looking at what was happening in the terminal and reading comments in SchedulerSimulationSync.java. After last process finished queue got empty and remaining CPUs were blocked. Re-read lecture slides on semaphores to understand how permits can be used as signaling mechanism between threads. Then I put condition SharedStats.getCompletedProcessCount() >= SharedStats.totalProcesses right after a process finishes so when this became true wake up all waiting CPU workers with readyQueue.semaphore.release(SharedStats.totalCPUs). Testing this change in VS Code fixed hang immediately and all threads terminated normally.
 ## Question 4: Where can synchronization concepts be applied in real-world applications?
 
 > 💡 **TIP:** Use real applications you know (banking and money transfers, ticket or seat booking, a shared counter on a website, a print queue, a database) and connect each one to what you built here (shared data, critical section, lock or semaphore).
 
 **Your Answer:** *(5-7 sentences)*
 
-[Write your answer here.]
-
+Synchronization concepts are used in many everyday software systems where shared resources have to be managed. For instance, in an airline or cinema seat booking system multiple users might try to reserve the same seat at once. A mutex lock has to protect the transaction as a critical section. just like how our ReentrantLock didn’t allow two CPUs to poll the same process from the ready queue. Another real-world example is database connection pool or print queue in office network: here counting semaphore tracks available database connections or idle printers so that incoming requests block safely until permit is released.
 ### Optional: What would you like to learn more about?
 
-[Any topics related to synchronization or operating systems that you're curious about?]
-
+I would like to know more about how distributed operating systems synchronize on different physical machines and networks.
 ### Optional: How confident do you feel about synchronization concepts now?
 
-[Beginner / Intermediate / Confident. What do you understand well? What needs more practice?]
+Intermediate. I now have a good idea of what mutex locks, critical sections and counting semaphores are but would like more practice with complex deadlock prevention algorithms.
 
 ### Optional: Feedback on the assignment
 
-[Any comments? Was it helpful? Too easy or hard? Suggestions?]
-
+This assignment was very practical and helpful. Seeing the race conditions through terminal colors and verification block made theoretical concepts much easier to grasp.
 ---
 
 # Part C: Technical Answers (0.5 mark)
